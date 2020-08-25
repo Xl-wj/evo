@@ -136,6 +136,63 @@ def write_tum_trajectory_file(file_path, traj, confirm_overwrite=False):
         logger.info("Trajectory saved to: " + file_path)
 
 
+def read_neolix_trajectory_file(file_path):
+    """
+    parses trajectory file in TUM format (timestamp tx ty tz qx qy qz qw)
+    :param file_path: the trajectory file path (or file handle)
+    :return: trajectory.PoseTrajectory3D object
+    """
+    raw_mat = csv_read_matrix(file_path, delim=" ", comment_str="#")
+
+    error_msg = ("NEOLIX trajectory files must have 13 entries per row "
+                 "and no trailing delimiter at the end of the rows (space)")
+    if len(raw_mat) > 0 and len(raw_mat[0]) != 12:
+        raise FileInterfaceException(error_msg)
+    try:
+        mat = np.array(raw_mat).astype(float)
+    except ValueError:
+        raise FileInterfaceException(error_msg)
+
+    stamps = mat[:, 1]  # n x 1
+    xyz = mat[:, 2:5]  # n x 3
+    quat = mat[:, 5:9]  # n x 4
+    quat = np.roll(quat, 1, axis=1)  # shift 1 column -> w in front column
+    if not hasattr(file_path, 'read'):  # if not file handle
+        logger.debug("Loaded {} stamps and poses from: {}".format(
+            len(stamps), file_path))
+    return PoseTrajectory3D(xyz, quat, stamps)
+
+
+def read_neolix_rtk_trajectory_file(file_path):
+    """
+    parses trajectory file in TUM format (timestamp tx ty tz qx qy qz qw)
+    :param file_path: the trajectory file path (or file handle)
+    :return: trajectory.PoseTrajectory3D object
+    """
+    raw_mat = csv_read_matrix(file_path, delim=" ", comment_str="#")
+    error_msg = ("NEOLIX trajectory files must have 13 entries per row "
+                 "and no trailing delimiter at the end of the rows (space)")
+
+    if len(raw_mat) > 0 and len(raw_mat[0]) != 17:
+        raise FileInterfaceException(error_msg)
+    try:
+        mat = np.array(raw_mat).astype(float)
+    except ValueError:
+        raise FileInterfaceException(error_msg)
+
+    stamps = mat[:, 1]  # n x 1
+    xyz = mat[:, 4:7]  # n x 3
+    quat = mat[:, 7:11]  # n x 4
+    quat = np.roll(quat, 1, axis=1)  # shift 1 column -> w in front column
+
+    if not hasattr(file_path, 'read'):  # if not file handle
+        logger.debug("Loaded {} stamps and poses from: {}".format(
+            len(stamps), file_path))
+
+    return PoseTrajectory3D(xyz, quat, stamps)
+
+
+
 def read_kitti_poses_file(file_path):
     """
     parses pose file in KITTI format (first 3 rows of SE(3) matrix per line)
@@ -405,3 +462,47 @@ def load_transform_json(json_path):
         quat = np.array([data["qw"], data["qx"], data["qy"], data["qz"]])
         t = lie.se3(lie.so3_from_se3(tr.quaternion_matrix(quat)), xyz)
         return t
+
+
+
+def load_neolix_pcd_timestamps(file_path):
+
+    raw_mat = csv_read_matrix(file_path, delim=" ", comment_str="#")
+    error_msg = ("NEOLIX trajectory files must have 2 entries per row "
+                 "and no trailing delimiter at the end of the rows (space)")
+
+    if len(raw_mat) > 0 and len(raw_mat[0]) != 2:
+        raise FileInterfaceException(error_msg)
+    try:
+        mat = np.array(raw_mat).astype(float)
+    except ValueError:
+        raise FileInterfaceException(error_msg)
+
+    stamps = mat[:, 1]  # n x 1
+
+    if not hasattr(file_path, 'read'):  # if not file handle
+        logger.debug("Loaded {} stamps and poses from: {}".format(
+            len(stamps), file_path))
+
+    return stamps
+
+
+
+def load_neolix_rtk_timestamps(file_path):
+    """
+    parses trajectory file in TUM format (timestamp tx ty tz qx qy qz qw)
+    :param file_path: the trajectory file path (or file handle)
+    :return: trajectory.PoseTrajectory3D object
+    """
+    raw_mat = csv_read_matrix(file_path, delim=" ", comment_str="#")
+    error_msg = ("NEOLIX trajectory files must have 13 entries per row "
+                 "and no trailing delimiter at the end of the rows (space)")
+
+    if len(raw_mat) > 0 and len(raw_mat[0]) != 17:
+        raise FileInterfaceException(error_msg)
+    try:
+        mat = np.array(raw_mat).astype(float)
+    except ValueError:
+        raise FileInterfaceException(error_msg)
+
+    return mat[:, 1]
