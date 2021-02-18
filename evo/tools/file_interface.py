@@ -163,6 +163,62 @@ def read_neolix_trajectory_file(file_path):
     return PoseTrajectory3D(xyz, quat, stamps)
 
 
+def read_neolix_trajectory_file(file_path):
+    """
+    parses trajectory file in TUM format (timestamp tx ty tz qx qy qz qw)
+    :param file_path: the trajectory file path (or file handle)
+    :return: trajectory.PoseTrajectory3D object
+    """
+    raw_mat = csv_read_matrix(file_path, delim=" ", comment_str="#")
+
+    error_msg = ("NEOLIX trajectory files must have 12 entries per row "
+                 "and no trailing delimiter at the end of the rows (space)")
+    if len(raw_mat) > 0 and len(raw_mat[0]) != 12:
+        raise FileInterfaceException(error_msg)
+    try:
+        mat = np.array(raw_mat).astype(float)
+    except ValueError:
+        raise FileInterfaceException(error_msg)
+
+    stamps = mat[:, 1]  # n x 1
+    xyz = mat[:, 2:5]  # n x 3
+    quat = mat[:, 5:9]  # n x 4
+    quat = np.roll(quat, 1, axis=1)  # shift 1 column -> w in front column
+    if not hasattr(file_path, 'read'):  # if not file handle
+        logger.debug("Loaded {} stamps and poses from: {}".format(
+            len(stamps), file_path))
+    return PoseTrajectory3D(xyz, quat, stamps), mat[:, 0]
+
+
+
+def read_lio_sam_trajectory_file(file_path):
+    """
+    parses trajectory file in TUM format (timestamp tx ty tz qx qy qz qw)
+    :param file_path: the trajectory file path (or file handle)
+    :return: trajectory.PoseTrajectory3D object
+    """
+    raw_mat = csv_read_matrix(file_path, delim=" ", comment_str="#")
+
+    error_msg = ("NEOLIX trajectory files must have 8 entries per row "
+                 "and no trailing delimiter at the end of the rows (space)")
+    if len(raw_mat) > 0 and len(raw_mat[0]) != 8:
+        raise FileInterfaceException(error_msg)
+    try:
+        mat = np.array(raw_mat).astype(float)
+    except ValueError:
+        raise FileInterfaceException(error_msg)
+
+    stamps = mat[:, 0]  # n x 1
+    xyz = mat[:, 1:4]  # n x 3
+    quat = mat[:, 4:8]  # n x 4
+    quat = np.roll(quat, 1, axis=1)  # shift 1 column -> w in front column
+    if not hasattr(file_path, 'read'):  # if not file handle
+        logger.debug("Loaded {} stamps and poses from: {}".format(
+            len(stamps), file_path))
+    return PoseTrajectory3D(xyz, quat, stamps), mat[:, 0]
+
+
+
 def read_neolix_rtk_trajectory_file(file_path):
     """
     parses trajectory file in TUM format (timestamp tx ty tz qx qy qz qw)
